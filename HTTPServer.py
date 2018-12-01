@@ -4,10 +4,7 @@
 from http.server import BaseHTTPRequestHandler, HTTPServer
 import os
 from sys import argv
-from collections import OrderedDict
 
-passwd_info = list()
-group_info = list()
 class Server(BaseHTTPRequestHandler):
     def set_headers(self, response=200):
         self.send_response(response)
@@ -21,6 +18,7 @@ class Server(BaseHTTPRequestHandler):
         name:passwd:userid:groupid:comment:home:shell
         {“name”: “root”, “uid”: 0, “gid”: 0, “comment”: “root”, “home”: “/root”, “shell”: “/bin/bash”}
         '''
+        passwd_info = list()
         f = open(passwd_path, 'r')
         for line in f:
             #ignore header
@@ -35,7 +33,7 @@ class Server(BaseHTTPRequestHandler):
             passwd_info.append(info)
 
         f.close()
-        return
+        return passwd_info
 
     #parse the group file
     def parse_group(self):
@@ -43,6 +41,7 @@ class Server(BaseHTTPRequestHandler):
         nobody:*:-2:
         groupname:passwd:groupid:grouplist
         '''
+        group_info = list()
         f = open(group_path, 'r')
         for line in f:
             #ignore header
@@ -57,10 +56,46 @@ class Server(BaseHTTPRequestHandler):
             group_info.append(info)
 
         f.close()
-        return
+        return group_info
 
-    def parse_query(self, query):
-        return
+    #get all the fields that we are querying
+    def parse_query(self, type, query):
+        user_fields = {'name', 'uid', 'gid', 'comment', 'home', 'shell'}
+        group_fields = {'name', 'gid', 'members'}
+
+        parameters = query.split('&') #['name=megan', 'gid=90']
+        query_match = dict()
+        for parameter in parameters:
+            key = parameter.split('=')[0]
+            #make sure key is valid
+            if type == 'users' and key not in user_fields:
+                raise Exception('Invalid query field: ' + key)
+            elif type == 'groups' and key not in group_fields:
+                raise Exception('Invalid group field: ' + key)
+
+            value = parameter.split('=')[1]
+            query_match[key] = value
+
+        return query_match
+
+    def match_query(self, type, queries):
+        ret = list()
+        #pick file to parse depending on the query
+        if type == 'users':
+            file = self.formatted_passwd
+        elif type == 'groups':
+            file = self.formatted_group
+
+        for entry in file:
+            flag = True #keep track of if a user fits all the queries
+            for query in queries:
+                #if any one of the fields don't match, we won't include that entry in the result
+                if entry[query] != queries[query]:
+                    flag = False
+            if flag == True:
+                ret.append(entry)
+
+        return ret
 
     #{“name”: “root”, “uid”: 0, “gid”: 0, “comment”: “root”, “home”: “/root”, “shell”: “/bin/bash”}
     def format_passwd(self, values):
@@ -73,7 +108,7 @@ class Server(BaseHTTPRequestHandler):
             ret_passwd.append(temp)
 
         return ret_passwd
-        
+
     #{“name”: “_analyticsusers”, “gid”: 250, “members”: [“_analyticsd’,”_networkd”,”_timed”]}
     def format_group(self, values):
         format = ['name', 'gid', 'members']
@@ -81,25 +116,52 @@ class Server(BaseHTTPRequestHandler):
         for row in values:
             temp = {}
             for i in range(len(row)):
+                #format members to display like the output
+                if i == 2:
+                    temp[format[i]] = list()
+                    members = row[i].split(',')
+                    for m in members:
+                        temp[format[i]].append(str(m))
+                    continue
                 temp[format[i]] = row[i]
             ret_group.append(temp)
 
         return ret_group
 
+    #GET function
     def do_GET(self):
         self.set_headers()
-        self.parse_passwd()
-        self.parse_group()
+        #parse all files and format them properly
+        self.passwd_info = self.parse_passwd()
+        self.group_info = self.parse_group()
+        self.formatted_passwd = self.format_passwd(self.passwd_info)
+        self.formatted_group = self.format_group(self.group_info)
 
         #GET request path, passed in from client
         command = self.path
 
-        if command == '/users':
-            ret = self.format_passwd(passwd_info)
+        #in case you wanted to view the information dumped in a browser
+        if command == '/':
+            ret = self.formatted_passwd + self.formatted_group
+
+        elif command == '/users':
+            ret = self.formatted_passwd
+
         elif command == '/groups':
-            ret = self.format_passwd(group_info)
+            ret = self.formatted_group
+
+        elif command.startswith('/users/query'): #example command would be GET /users/query?name=megan&gid=90
+            query = command.split('?')[1]
+            queries = self.parse_query('users', query)
+            ret = self.match_query('users', queries)
+
+        elif command.startswith('/groups/query'):
+            query = command.split('?')[1]
+            queries = self.parse_query('groups', query)
+            ret = self.match_query('groups', queries)
+
         else:
-            raise Exception('Invalid query')
+            raise Exception('Invalid query: ' + command)
 
         ret = str(ret).encode()
         self.wfile.write(ret)
