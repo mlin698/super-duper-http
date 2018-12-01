@@ -1,21 +1,23 @@
 #!/usr/bin/env python
 
-import httplib
+import http.client
 import sys
 
 http_server = sys.argv[1]
-conn = httplib.HTTPConnection(http_server)
+conn = http.client.HTTPConnection(http_server)
 
 while 1:
-  cmd = raw_input()
-  cmd = cmd.split()
-  
-  conn.request(cmd[0], cmd[1])
+    #[GET] [command]
+    cmd = input()
+    cmd = cmd.split()
 
-  rsp = conn.getresponse()
+    conn.request(cmd[0], cmd[1])
 
-  print(rsp.status, rsp.reason)
-  data_received = rsp.read()
-  print(data_received)
+    rsp = conn.getresponse()
+
+    print(rsp.status, rsp.reason)
+    data_received = rsp.read()
+    data_received = str(data_received).strip('b\"')
+    print(data_received)
 
 conn.close()
