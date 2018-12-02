@@ -216,7 +216,6 @@ if __name__ == "__main__":
     if passwd_input != '':
         passwd_path = passwd_input
     else:
-        #passwd_path = '/etc/passwd'
         passwd_path = '/etc/passwd'
 
     #default value at /etc/group
@@ -231,7 +230,6 @@ if __name__ == "__main__":
     if group_input != '':
         group_path = group_input
     else:
-        #group_path = '/etc/group'
         group_path = '/etc/group'
 
     #if a port is specified, we run on that port. otherwise default to 80
