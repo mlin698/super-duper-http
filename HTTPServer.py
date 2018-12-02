@@ -13,11 +13,6 @@ class Server(BaseHTTPRequestHandler):
 
     #parse the password file for the information we want
     def parse_passwd(self):
-        '''
-        example: _reportmemoryexception:*:269:269:ReportMemoryException:/var/db/reportmemoryexception:/usr/bin/false
-        name:passwd:userid:groupid:comment:home:shell
-        {“name”: “root”, “uid”: 0, “gid”: 0, “comment”: “root”, “home”: “/root”, “shell”: “/bin/bash”}
-        '''
         passwd_info = list()
         f = open(passwd_path, 'r')
         for line in f:
@@ -61,9 +56,9 @@ class Server(BaseHTTPRequestHandler):
     #get all the fields that we are querying
     def parse_query(self, type, query):
         user_fields = {'name', 'uid', 'gid', 'comment', 'home', 'shell'}
-        group_fields = {'name', 'gid', 'members'}
+        group_fields = {'name', 'gid', 'member'}
 
-        parameters = query.split('&') #['name=megan', 'gid=90']
+        parameters = query.split('&') #get multiple queries
         query_match = dict()
         for parameter in parameters:
             key = parameter.split('=')[0]
@@ -74,6 +69,7 @@ class Server(BaseHTTPRequestHandler):
                 raise Exception('Invalid group field: ' + key)
 
             value = parameter.split('=')[1]
+            value = value.replace('%2F', '/')
             query_match[key] = value
 
         return query_match
@@ -86,17 +82,26 @@ class Server(BaseHTTPRequestHandler):
         elif type == 'groups':
             file = self.formatted_group
 
+        #TODO: fix for group members
+
         for entry in file:
             flag = True #keep track of if a user fits all the queries
             for query in queries:
+                #if the query is looking for a member, we need to look through the members list
+                #otherwise, we can just get an exact match
+                if query == 'member':
+                    if queries[query] not in entry['members']:
+                        flag = False
                 #if any one of the fields don't match, we won't include that entry in the result
-                if entry[query] != queries[query]:
+                elif entry[query] != queries[query]:
                     flag = False
+
             if flag == True:
                 ret.append(entry)
 
         return ret
 
+    #format each user to appear as such:
     #{“name”: “root”, “uid”: 0, “gid”: 0, “comment”: “root”, “home”: “/root”, “shell”: “/bin/bash”}
     def format_passwd(self, values):
         format = ['name', 'uid', 'gid', 'comment', 'home', 'shell']
@@ -109,6 +114,7 @@ class Server(BaseHTTPRequestHandler):
 
         return ret_passwd
 
+    #format each group to appear as such:
     #{“name”: “_analyticsusers”, “gid”: 250, “members”: [“_analyticsd’,”_networkd”,”_timed”]}
     def format_group(self, values):
         format = ['name', 'gid', 'members']
@@ -130,7 +136,6 @@ class Server(BaseHTTPRequestHandler):
 
     #GET function
     def do_GET(self):
-        self.set_headers()
         #parse all files and format them properly
         self.passwd_info = self.parse_passwd()
         self.group_info = self.parse_group()
@@ -143,34 +148,70 @@ class Server(BaseHTTPRequestHandler):
         #in case you wanted to view the information dumped in a browser
         if command == '/':
             ret = self.formatted_passwd + self.formatted_group
+            self.set_headers()
 
         elif command == '/users':
             ret = self.formatted_passwd
+            self.set_headers()
 
         elif command == '/groups':
             ret = self.formatted_group
+            self.set_headers()
 
         elif command.startswith('/users/query'): #example command would be GET /users/query?name=megan&gid=90
             query = command.split('?')[1]
             queries = self.parse_query('users', query)
             ret = self.match_query('users', queries)
+            self.set_headers()
 
         elif command.startswith('/groups/query'):
             query = command.split('?')[1]
             queries = self.parse_query('groups', query)
             ret = self.match_query('groups', queries)
+            self.set_headers()
+
+        elif command.startswith('/users/'):
+            uid = command.split('/')[2]
+            query = {'uid': uid}
+
+            ret = self.match_query('users', query) #done if not looking for groups
+
+            #if user is not found, return 404
+            if len(ret) == 0:
+                self.set_headers(response=404)
+
+            #if the command is /users/<uid/groups
+            if command.endswith('/groups'):
+                name = ret[0]['name']
+                query_name = {'member':name}
+                ret = self.match_query('groups', query_name)
+
+            self.set_headers()
+        elif command.startswith('/groups/'):
+            gid = command.split('/')[2]
+            query = {'gid': gid}
+
+            ret = self.match_query('groups', query)
+
+            #if groups is not found, return 404
+            if len(ret) == 0:
+                self.set_headers(response=404)
+
+            self.set_headers()
 
         else:
             raise Exception('Invalid query: ' + command)
 
+        #encode return as bytes to be sent back to client
         ret = str(ret).encode()
         self.wfile.write(ret)
 
 
 def run(server_class=HTTPServer, handler_class=Server, port=80):
+    # will always be local host
     server_address = ('', port)
     httpd = server_class(server_address, handler_class)
-    print('Starting httpd...')
+    print('Server is running...')
     httpd.serve_forever()
 
 if __name__ == "__main__":
@@ -178,8 +219,12 @@ if __name__ == "__main__":
     print('Input path to passwd file:')
     passwd_input = input()
 
+    #if file is invalid, keep asking
+    while not os.path.exists(passwd_input) and passwd_input != '':
+        print('Invalid file. Please input path to passwd file:')
+        passwd_input = input()
+
     if passwd_input != '':
-        #TODO: while input is not valid(aka path doesn't exist), ask to try again
         passwd_path = passwd_input
     else:
         #passwd_path = '/etc/passwd'
@@ -189,13 +234,18 @@ if __name__ == "__main__":
     print('Input path to group file:')
     group_input = input()
 
+    #if file is invalid, keep asking
+    while not os.path.exists(group_input) and group_input != '':
+        print('Invalid file. Please input path to group file:')
+        group_input = input()
+
     if group_input != '':
         group_path = group_input
     else:
         #group_path = '/etc/group'
         group_path = 'group_test'
 
-
+    #if a port is specified, we run on that port. otherwise default to 80
     if len(argv) == 2:
         print(argv[1])
         run(port=int(argv[1]))
