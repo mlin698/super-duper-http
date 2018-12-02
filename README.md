@@ -15,7 +15,7 @@ In another terminal, enter the following command to start the client. This is wh
 
 `python3 Client.py [server location]`
   
-In the Client, you can then query the server. If any queries return empty, you will get a 404 not found response. If any queries are invalid, the command window running the Server will throw an exception and you will get a 400 response.
+In the Client terminal, you can then query the server. If any queries return empty, you will get a 404 not found response. If any queries are invalid, the command window running the Server will throw an exception and you will get a 400 response.
 
 ### Supported commands:
 
