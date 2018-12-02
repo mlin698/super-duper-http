@@ -1,7 +1,8 @@
 # HTTP Server
 
 ### What you need to get started:
-python3
+- python3
+- requests `pip3 install requests`
 
 ### Running the script:
 In one terminal, enter the following command to start the server. If no port is specified, the server will default to port 80.
