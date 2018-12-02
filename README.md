@@ -2,7 +2,7 @@
 
 ### What you need to get started:
 - python3
-- requests `pip3 install requests`
+- requests (for testing only) `pip3 install requests`
 
 ### Running the script:
 In one terminal, enter the following command to start the server. If no port is specified, the server will default to port 80.
