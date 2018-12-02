@@ -22,6 +22,7 @@ class Server(BaseHTTPRequestHandler):
             info = line.split(':')
             #if file is malformed
             if len(info) != 7:
+                self.set_headers(response=400)
                 raise Exception('passwd file is not formatted correctly')
             info.pop(1) #drop password field
             info[5] = info[5].rstrip('\n')
@@ -45,6 +46,7 @@ class Server(BaseHTTPRequestHandler):
             info = line.split(':')
             #if file is malformed
             if len(info) != 4:
+                self.set_headers(response=400)
                 raise Exception('group file is not formatted correctly')
             info.pop(1) #drop password field
             info[2] = info[2].rstrip('\n')
@@ -64,8 +66,10 @@ class Server(BaseHTTPRequestHandler):
             key = parameter.split('=')[0]
             #make sure key is valid
             if type == 'users' and key not in user_fields:
+                self.set_headers(response=400)
                 raise Exception('Invalid query field: ' + key)
             elif type == 'groups' and key not in group_fields:
+                self.set_headers(response=400)
                 raise Exception('Invalid group field: ' + key)
 
             value = parameter.split('=')[1]
@@ -182,6 +186,7 @@ class Server(BaseHTTPRequestHandler):
             ret = self.match_query('groups', query)
 
         else:
+            self.set_headers(response=400)
             raise Exception('Invalid query: ' + command)
 
 

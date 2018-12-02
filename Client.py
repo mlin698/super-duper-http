@@ -12,15 +12,17 @@ while 1:
     cmd = input()
     cmd = cmd.split()
 
-    #send command to server
-    conn.request(cmd[0], cmd[1])
+    if cmd[0] != 'GET':
+        print('Invalid command: ' + cmd[0])
+    else:
+        #send command to server
+        conn.request(cmd[0], cmd[1])
+        rsp = conn.getresponse()
 
-    rsp = conn.getresponse()
-
-    #get server response
-    print(rsp.status, rsp.reason)
-    data_received = rsp.read()
-    data_received = str(data_received).strip('b\"')
-    print(data_received)
+        #get server response
+        print(rsp.status, rsp.reason)
+        data_received = rsp.read()
+        data_received = str(data_received).strip('b\"')
+        print(data_received)
 
 conn.close()
