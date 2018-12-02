@@ -148,27 +148,22 @@ class Server(BaseHTTPRequestHandler):
         #in case you wanted to view the information dumped in a browser
         if command == '/':
             ret = self.formatted_passwd + self.formatted_group
-            self.set_headers()
 
         elif command == '/users':
             ret = self.formatted_passwd
-            self.set_headers()
 
         elif command == '/groups':
             ret = self.formatted_group
-            self.set_headers()
 
         elif command.startswith('/users/query'): #example command would be GET /users/query?name=megan&gid=90
             query = command.split('?')[1]
             queries = self.parse_query('users', query)
             ret = self.match_query('users', queries)
-            self.set_headers()
 
         elif command.startswith('/groups/query'):
             query = command.split('?')[1]
             queries = self.parse_query('groups', query)
             ret = self.match_query('groups', queries)
-            self.set_headers()
 
         elif command.startswith('/users/'):
             uid = command.split('/')[2]
@@ -176,31 +171,27 @@ class Server(BaseHTTPRequestHandler):
 
             ret = self.match_query('users', query) #done if not looking for groups
 
-            #if user is not found, return 404
-            if len(ret) == 0:
-                self.set_headers(response=404)
-
             #if the command is /users/<uid/groups
             if command.endswith('/groups'):
                 name = ret[0]['name']
                 query_name = {'member':name}
                 ret = self.match_query('groups', query_name)
 
-            self.set_headers()
         elif command.startswith('/groups/'):
             gid = command.split('/')[2]
             query = {'gid': gid}
 
             ret = self.match_query('groups', query)
 
-            #if groups is not found, return 404
-            if len(ret) == 0:
-                self.set_headers(response=404)
-
-            self.set_headers()
-
         else:
             raise Exception('Invalid query: ' + command)
+
+
+        #if query returns no results, send 404 not found
+        if len(ret) == 0:
+            self.set_headers(response=404)
+        else:
+            self.set_headers()
 
         #encode return as bytes to be sent back to client
         ret = str(ret).encode()
@@ -228,7 +219,7 @@ if __name__ == "__main__":
         passwd_path = passwd_input
     else:
         #passwd_path = '/etc/passwd'
-        passwd_path = 'passwd_test'
+        passwd_path = '/etc/passwd'
 
     #default value at /etc/group
     print('Input path to group file:')
@@ -243,7 +234,7 @@ if __name__ == "__main__":
         group_path = group_input
     else:
         #group_path = '/etc/group'
-        group_path = 'group_test'
+        group_path = '/etc/group'
 
     #if a port is specified, we run on that port. otherwise default to 80
     if len(argv) == 2:
