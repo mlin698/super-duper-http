@@ -82,8 +82,6 @@ class Server(BaseHTTPRequestHandler):
         elif type == 'groups':
             file = self.formatted_group
 
-        #TODO: fix for group members
-
         for entry in file:
             flag = True #keep track of if a user fits all the queries
             for query in queries:
