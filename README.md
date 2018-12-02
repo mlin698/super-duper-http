@@ -42,4 +42,5 @@ Returns group with matching gid. Example: `GET /groups/40`
 #### GET /groups/query[?name=\<name\>][&gid=\<gid\>][&member=\<member1\>[&member=\<member2\>][&. ..]]
 Returns any group matching the query parameters. Example: `GET /groups/query?name=work&member=megan&member=ryan`
 
-
+### Testing
+I wrote the unit tests using my own /etc/passwd and /etc/group files.
