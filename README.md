@@ -11,7 +11,7 @@ In one terminal, enter the following command to start the server. If no port is 
 
 Upon execution, this script will ask for a location for the passwd and group files. If no file is specified, the locations will default to /etc/passwd and /etc/group
   
-In another terminal, enter the following command to start the client. This is where we enter our GET commands. The server location should look something like: `http://localhost:80`.
+In another terminal, enter the following command to start the client. This is where we enter our GET commands. The server location should look something like: `localhost:8080`.
 
 `python3 Client.py [server location]`
   
