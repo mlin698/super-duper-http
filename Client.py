@@ -6,6 +6,7 @@ import sys
 #connects client to the server
 http_server = sys.argv[1]
 conn = http.client.HTTPConnection(http_server)
+print('Listening for commands...')
 
 while 1:
     #[GET] [command]
